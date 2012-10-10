@@ -69,26 +69,38 @@
         }else {
             leftOverSpace -= self.section.sectionMargins.left + self.section.sectionMargins.right;
         }
-
-        for (NSInteger itemIndex = 0; itemIndex < self.itemCount; itemIndex++) {
-            if (!self.fixedItemSize) {
+        
+        CGFloat itemDimension = 0;
+        CGFloat interstice = isHorizontal ? self.section.verticalInterstice : self.section.horizontalInterstice;
+        unsigned int maxItemCount = self.itemCount;
+        
+        // calculate max item count that would fit in this row
+        if (self.fixedItemSize) {
+            itemDimension = (isHorizontal ? self.section.itemSize.height : self.section.itemSize.width);
+            maxItemCount = (leftOverSpace+interstice)/(itemDimension+interstice);
+        }
+        
+        if (!self.fixedItemSize) {
+            for (NSInteger itemIndex = 0; itemIndex < self.itemCount; itemIndex++) {
                 PSTGridLayoutItem *item = self.items[itemIndex];
                 leftOverSpace -= isHorizontal ? item.itemFrame.size.height : item.itemFrame.size.width;
-            }else {
-                leftOverSpace -= isHorizontal ? self.section.itemSize.height : self.section.itemSize.width;
+                // separator starts after first item
+                if (itemIndex > 0) {
+                    leftOverSpace -= isHorizontal ? self.section.verticalInterstice : self.section.horizontalInterstice;
+                }
             }
-            // separator starts after first item
-            if (itemIndex > 0) {
-                leftOverSpace -= isHorizontal ? self.section.verticalInterstice : self.section.horizontalInterstice;
-            }
+        } else {
+            // calculate left over space if we would use up the max number of items
+            leftOverSpace -= ((itemDimension + interstice) * (maxItemCount) - interstice);
         }
+        
         CGPoint itemOffset = CGPointZero;
         if (horizontalAlignment == PSTFlowLayoutHorizontalAlignmentRight) {
             itemOffset.x += leftOverSpace;
         }else if(horizontalAlignment == PSTFlowLayoutHorizontalAlignmentCentered) {
             itemOffset.x += leftOverSpace/2;
         }
-
+        
         // calculate row frame as union of all items
         CGRect frame = CGRectZero;
         CGRect itemFrame = (CGRect){.size=self.section.itemSize};
@@ -102,13 +114,13 @@
                 itemFrame.origin.y = itemOffset.y;
                 itemOffset.y += itemFrame.size.height + self.section.verticalInterstice;
                 if (horizontalAlignment == PSTFlowLayoutHorizontalAlignmentJustify) {
-                    itemOffset.y += leftOverSpace/(CGFloat)(self.itemCount-1);
+                    itemOffset.y += leftOverSpace/(CGFloat)(maxItemCount-1);
                 }
             }else {
                 itemFrame.origin.x = itemOffset.x;
                 itemOffset.x += itemFrame.size.width + self.section.horizontalInterstice;
                 if (horizontalAlignment == PSTFlowLayoutHorizontalAlignmentJustify) {
-                    itemOffset.x += leftOverSpace/(CGFloat)(self.itemCount-1);
+                    itemOffset.x += leftOverSpace/(CGFloat)(maxItemCount-1);
                 }
             }
             item.itemFrame = CGRectIntegral(itemFrame); // might call nil; don't care
